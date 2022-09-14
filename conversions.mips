@@ -1,0 +1,143 @@
+# Name: percent_base_10
+# File: conversion.s
+# Declaration:  int percent_base_10( int value)
+# Semantics:
+#    - iteratively divides the input value by 10.
+#    - converts the remainder to ASCII
+#    - print outs the ASCII character to the stdout
+#    - returns the number of ASCII characters printed
+# Edge Condition:
+#    - value = 0;
+# Question: 
+#    - Should you use a while, for, or do-while loop?
+#
+# Starter Code:
+    .include "include/syscall_macros.s"
+         .include "include/isqrt.s"
+.macro inc (%x)
+        add %x, %x, 1
+        .end_macro
+
+    .macro dec (%x)
+        subi %x, %x, 1
+        .end_macro
+
+    .macro print_int (%x)
+    li $v0, 1
+    add $a0, $zero, %x
+    syscall
+    .end_macro
+
+    .globl main
+main:
+li $a0, 16
+    li $v0, 9
+    syscall
+    move $t6, $v0
+   
+    li $a0, 1234        # count = percent_base_10(1234)
+    read_int ($a1)
+
+    jal percent_signed_base
+    move $t1, $v0
+    move $a0, $a1
+    dec ($a0)
+    li $v0, 4
+    syscall
+    print_out:
+    
+    li $a0, '\n'        # print_char('\n')
+    li $v0, 11
+    syscall
+    print_int($t1)
+    li $a0, 0       # exit(0)
+    li $v0, 17
+    syscall
+
+percent_signed_base:
+
+    bltz $a0, less
+    bgtz $a0, greater
+
+    less:
+    li $a2, '-'
+    sb $a2, ($t6)
+    inc ($t6)
+    xori $a0, $a0, -1
+    inc ($a0)
+    b if_done
+
+    greater:
+    li $a2, '+'
+    sb $a2, ($t6)
+    inc ($t6)
+    b if_done
+
+    if_done:
+    
+    move $t8, $ra
+
+    jal percent_unsigned_base
+
+    move $ra, $t8
+
+    jr $ra
+
+percent_unsigned_base:
+  
+    move $t2, $a0     # store a0 into t2
+    move $t3, $zero   # make sure t3 is zero
+
+    li $t7, 9
+
+    while:
+
+    beqz $t2, end_loop     # branch if a0 = 0
+    rem $t4, $t2, $a1     # get remainder of t2/a1 and put in t4
+   ble $t4, $t7, less_than
+   bgt $t4, $t7, greater_than
+
+
+  less_than:
+  addi $t4, $t4, '0'
+  b equal
+
+  greater_than: 
+  subi $t4, $t4, 10
+  addi $t4, $t4, 'A'
+  b equal
+
+  equal:
+
+    sub $sp, $sp, 4
+    sw $t4, 0($sp)
+    div $t2, $t2, $a1     # div a0 with 10 
+
+    inc ($t3)
+
+    j while
+    end_loop:
+    move $t5, $zero
+    move $a1, $t6
+
+    print_loop: 
+
+    bge $t5, $t3, print_end
+
+    lw $s0, ($sp)
+    addi $sp, $sp, 4
+
+
+    sb $s0, ($a1)
+    addi $a1, $a1, 1
+    
+    inc ($t5)
+
+    j print_loop 
+    print_end:
+    
+    sub $a1, $a1, $t5
+
+    move $v0, $t3
+
+    jr $ra
